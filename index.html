@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint Animator Web</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #2a2a35;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #e0e0e8;
+        }
+
+        /* Contenedor Principal */
+        .container {
+            background-color: #20202b;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            max-width: 640px;
+            width: 100%;
+        }
+
+        /* Lienzo de dibujo */
+        canvas {
+            background-color: #ffffff;
+            display: block;
+            margin: 0 auto 15px auto;
+            border-radius: 6px;
+            cursor: crosshair;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            touch-action: none; /* Evita que la pantalla se mueva en móviles/TV al dibujar */
+        }
+
+        /* Paneles de Control */
+        .panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background-color: #2a2a35;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .panel-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #a0a0b0;
+        }
+
+        /* Inputs y Controles */
+        input[type="color"] {
+            border: none;
+            width: 40px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+
+        input[type="range"] {
+            width: 80px;
+            accent-color: #007bff;
+            cursor: pointer;
+        }
+
+        /* Botones */
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-dark { background-color: #3b3b4f; }
+        .btn-dark:hover { background-color: #4a4a64; }
+
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; }
+
+        .btn-play { 
+            background-color: #007bff; 
+            min-width: 90px;
+        }
+        .btn-play.playing {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        /* Papel Cebolla Switch */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        #frameLabel {
+            font-size: 1rem;
+            font-weight: bold;
+            min-width: 90px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Paint Animator Web</h1>
+
+    <div class="container">
+        <!-- Lienzo de Dibujo (Fijo a 600x400 como tu versión original) -->
+        <canvas id="paintCanvas" width="600" height="400"></canvas>
+
+        <!-- Panel Superior -->
+        <div class="panel">
+            <div class="panel-group">
+                <button class="btn-dark" id="colorBtn">Color</button>
+                <input type="color" id="brushColor" value="#000000">
+                
+                <label for="brushSize">Tamaño:</label>
+                <input type="range" id="brushSize" min="1" max="30" value="5">
+            </div>
+
+            <div class="panel-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="onionSkin" checked> Papel Cebolla
+                </label>
+                <button class="btn-danger" id="clearFrameBtn">Borrar Frame</button>
+            </div>
+        </div>
+
+        <!-- Panel Inferior -->
+        <div class="panel">
+            <div class="panel-group">
+                <button class="btn-dark" id="prevFrameBtn">← Ant</button>
+                <span id="frameLabel">Frame: 1 / 1</span>
+                <button class="btn-dark" id="nextFrameBtn">Sig →</button>
+            </div>
+
+            <div class="panel-group">
+                <button class="btn-success" id="addFrameBtn">+ Frame</button>
+                <button class="btn-danger" id="deleteFrameBtn">- Frame</button>
+            </div>
+
+            <div class="panel-group">
+                <label for="fpsSlider">FPS:</label>
+                <input type="range" id="fpsSlider" min="1" max="24" value="6">
+                <button class="btn-play" id="playBtn">Play ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuración y Elementos del DOM ---
+        const canvas = document.getElementById('paintCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const brushColorInput = document.getElementById('brushColor');
+        const colorBtn = document.getElementById('colorBtn');
+        const brushSizeInput = document.getElementById('brushSize');
+        const onionSkinCheckbox = document.getElementById('onionSkin');
+        const clearFrameBtn = document.getElementById('clearFrameBtn');
+
+        const prevFrameBtn = document.getElementById('prevFrameBtn');
+        const nextFrameBtn = document.getElementById('nextFrameBtn');
+        const frameLabel = document.getElementById('frameLabel');
+        const addFrameBtn = document.getElementById('addFrameBtn');
+        const deleteFrameBtn = document.getElementById('deleteFrameBtn');
+        
+        const fpsSlider = document.getElementById('fpsSlider');
+        const playBtn = document.getElementById('playBtn');
+
+        // --- Estado de la Animación ---
+        let framesData = [[]]; // Array de frames, cada frame contiene una lista de trazos
+        let currentFrameIndex = 0;
+        let isDrawing = false;
+        let currentStroke = null;
+        let isPlaying = false;
+        let playTimeout = null;
+
+        // Cargar datos guardados si existen
+        loadFromLocalStorage();
+
+        // --- Inicialización del Dibujo (Soporta Mouse y Pantalla Táctil) ---
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Soporte para eventos táctiles (Smart TV con puntero, móvil o tablet)
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function startStroke(e) {
+            if (isPlaying) return;
+            isDrawing = true;
+            const coords = getCoords(e);
+            currentStroke = {
+                color: brushColorInput.value,
+                size: parseInt(brushSizeInput.value),
+                points: [coords.x, coords.y]
+            };
+        }
+
+        function drawStroke(e) {
+            if (!isDrawing || isPlaying) return;
+            const coords = getCoords(e);
+            
+            // Dibujar en tiempo real en la pantalla
+            ctx.strokeStyle = currentStroke.color;
+            ctx.lineWidth = currentStroke.size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            const pts = currentStroke.points;
+            ctx.moveTo(pts[pts.length - 2], pts[pts.length - 1]);
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+
+            currentStroke.points.push(coords.x, coords.y);
+        }
+
+        function endStroke() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (currentStroke && currentStroke.points.length >= 4) {
+                framesData[currentFrameIndex].push(currentStroke);
+                saveToLocalStorage();
+            }
+            currentStroke = null;
+            renderCurrentFrame();
+        }
+
+        // Eventos del Mouse
+        canvas.addEventListener('mousedown', startStroke);
+        canvas.addEventListener('mousemove', drawStroke);
+        window.addEventListener('mouseup', endStroke);
+
+        // Eventos Táctiles (Móviles / Tablets / TVs inteligentes)
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startStroke(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawStroke(e); }, { passive: false });
+        canvas.addEventListener('touchend', endStroke);
+
+        // Trigger para abrir paleta de colores al presionar el botón "Color"
+        colorBtn.addEventListener('click', () => brushColorInput.click());
+
+        // --- Renderizado de Canvas ---
+        function drawFrameLines(frame, opacityColor = null) {
+            frame.forEach(stroke => {
+                const pts = stroke.points;
+                if (pts.length < 4) return;
+
+                ctx.strokeStyle = opacityColor ? opacityColor : stroke.color;
+                ctx.lineWidth = stroke.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(pts[0], pts[1]);
+                for (let i = 2; i < pts.length; i += 2) {
+                    ctx.lineTo(pts[i], pts[i+1]);
+                }
+                ctx.stroke();
+            });
+        }
+
+        function renderCurrentFrame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Dibujar Papel Cebolla (Frame anterior en gris claro)
+            if (onionSkinCheckbox.checked && currentFrameIndex > 0 && !isPlaying) {
+                const prevFrame = framesData[currentFrameIndex - 1] || [];
+                drawFrameLines(prevFrame, "#e0e0e8");
+            }
+
+            // 2. Dibujar Frame Activo
+            const currentFrame = framesData[currentFrameIndex] || [];
+            drawFrameLines(currentFrame);
+
+            // Actualizar etiqueta
+            const totalFrames = framesData.length;
+            frameLabel.textContent = `Frame: ${currentFrameIndex + 1} / ${totalFrames}`;
+        }
+
+        // --- Gestión de la Línea de Tiempo ---
+        addFrameBtn.addEventListener('click', () => {
+            framesData.push([]);
+            currentFrameIndex = framesData.length - 1;
+            saveToLocalStorage();
+            renderCurrentFrame();
+        });
+
+        deleteFrameBtn.addEventListener('click', () => {
+            if (framesData.length <= 1) {
+                clearFrame();
+                return;
+            }
+            framesData.splice(currentFrameIndex, 1);
+            currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+            saveToLocalStorage();
+            renderCurrentFrame();
+        });
+
+        prevFrameBtn.addEventListener('click', () => {
+            if (currentFrameIndex > 0) {
+                currentFrameIndex--;
+                renderCurrentFrame();
+            }
+        });
+
+        nextFrameBtn.addEventListener('click', () => {
+            if (currentFrameIndex < framesData.length - 1) {
+                currentFrameIndex++;
+                renderCurrentFrame();
+            }
+        });
+
+        function clearFrame() {
+            framesData[currentFrameIndex] = [];
+            saveToLocalStorage();
+            renderCurrentFrame();
+        }
+        clearFrameBtn.addEventListener('click', clearFrame);
+
+        onionSkinCheckbox.addEventListener('change', renderCurrentFrame);
+
+        // --- Motor de Reproducción (Playback) ---
+        function playbackLoop() {
+            if (!isPlaying) return;
+            currentFrameIndex = (currentFrameIndex + 1) % framesData.length;
+            renderCurrentFrame();
+            
+            const fps = parseInt(fpsSlider.value);
+            playTimeout = setTimeout(playbackLoop, 1000 / fps);
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                clearTimeout(playTimeout);
+                playBtn.textContent = "Play ▶";
+                playBtn.classList.remove('playing');
+                renderCurrentFrame();
+            } else {
+                isPlaying = true;
+                playBtn.textContent = "Pausa ❚❚";
+                playBtn.classList.add('playing');
+                playbackLoop();
+            }
+        });
+
+        // --- Persistencia con LocalStorage ---
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('paint_animator_frames', JSON.stringify(framesData));
+            } catch (e) {
+                console.error("No se pudo guardar localmente: ", e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('paint_animator_frames');
+            if (saved) {
+                try {
+                    framesData = JSON.parse(saved);
+                    currentFrameIndex = 0;
+                } catch (e) {
+                    framesData = [[]];
+                }
+            } else {
+                framesData = [[]];
+            }
+        }
+
+        // Renderizado inicial
+        renderCurrentFrame();
+    </script>
+</body>
+</html>
