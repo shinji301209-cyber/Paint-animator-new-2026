@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sin título - Paint (Animador Web)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #8e9fb4;
+            color: #000000;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Ventana principal estilo Windows 7 adaptada a pantalla completa */
+        .win7-window {
+            background-color: #e5f0fb;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Barra de Título */
+        .win7-titlebar {
+            background: linear-gradient(to bottom, #2c5b9c, #13396d);
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        /* Cinta de Opciones (Ribbon UI) */
+        .win7-ribbon {
+            background: linear-gradient(to bottom, #f5f6f7, #e3e7ed);
+            border-bottom: 1px solid #b9c9da;
+            padding: 8px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        /* Cajas de Secciones de la Cinta */
+        .ribbon-group {
+            background-color: rgba(255, 255, 255, 0.5);
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ribbon-group-title {
+            font-size: 0.72rem;
+            color: #555555;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            border-top: 1px solid #e0e0e0;
+            width: 100%;
+            text-align: center;
+            padding-top: 2px;
+            margin-top: 2px;
+        }
+
+        .ribbon-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* Botones estilo Windows 7 */
+        button, select {
+            background: linear-gradient(to bottom, #fcfcfc, #e0e0e0);
+            border: 1px solid #707070;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        button:hover, select:hover {
+            background: linear-gradient(to bottom, #eaf6fd, #a7d9f5);
+            border-color: #3c7fb1;
+        }
+
+        button:active {
+            background: linear-gradient(to bottom, #c2e4f6, #7ac0e6);
+        }
+
+        .btn-primary {
+            background: linear-gradient(to bottom, #e1f0fa, #9bcbe8);
+            border-color: #3c7fb1;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .btn-danger {
+            background: linear-gradient(to bottom, #fde8e8, #f5a3a3);
+            border-color: #c84040;
+        }
+
+        /* Paleta de Colores rápida */
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(7, 18px);
+            gap: 3px;
+        }
+
+        .color-swatch {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #707070;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.15);
+            border-color: #000;
+        }
+
+        /* Área del Lienzo de Dibujo */
+        .canvas-area {
+            background-color: #8e9fb4;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1; 
+            overflow: auto;
+        }
+
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #555;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* Barra de Estado Inferior */
+        .win7-statusbar {
+            background-color: #f0f0f0;
+            border-top: 1px solid #d9d9d9;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            color: #444;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        label {
+            font-size: 0.8rem;
+        }
+
+        input[type="range"] {
+            width: 70px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="win7-window">
+        <!-- Barra de Título -->
+        <div class="win7-titlebar">
+            <span> Paint Animador Web </span>
+        </div>
+
+        <!-- Cinta de Opciones (Ribbon) -->
+        <div class="win7-ribbon">
+            
+            <!-- Grupo: Animación y Fotogramas -->
+            <div class="ribbon-group">
+                <div class="ribbon-controls">
+                    <button id="prevFrameBtn"> Anterior </button>
+                    <strong id="frameLabel">Hoja: 1 / 1</strong>
+                    <button id="nextFrameBtn"> Siguiente </button>
+                    <button class="btn-primary" id="addHojaBtn">+ Hoja</button>
+                    <button class="btn-danger" id="deleteHojaBtn">- Hoja</button>
+                </div>
+                <div class="ribbon-controls">
+                    <button class="btn-primary" id="playBtn"> Iniciar </button>
+                    <label>Velocidad:</label>
+                    <input type="range" id="fpsSlider" min="1" max="24" value="6">
+                    <label><input type="checkbox" id="onionSkin" checked> Cebolla</label>
+                </div>
+                <div class="ribbon-group-title">hoja y velocidad</div>
+            </div>
+
+            <!-- Grupo: Herramientas y Pinceles -->
+            <div class="ribbon-group">
+                <div class="ribbon-controls">
+                    <label for="brushType">Pincel:</label>
+                    <select id="brushType">
+                        <option value="round">Normal (Redondo)</option>
+                        <option value="square"> Pluma (Cuadrado)</option>
+                        <option value="highlighter"> Resaltador</option>
+                        <option value="spray">Aerógrafo (Spray)</option>
+                        <option value="eraser">Borrador</option>
+                    </select>
+                    <!-- NUEVO BOTÓN DE SPRAY REALISTA -->
+                    <button id="realisticSprayBtn" title="Simula un aerosol real">Spray Realista: OFF</button>
+                    <button class="btn-danger" id="clearFrameBtn">borar hoja</button>
+                </div>
+                <div class="ribbon-controls">
+                    <label for="brushSize">Magnitud:</label>
+                    <input type="range" id="brushSize" min="1" max="40" value="5">
+                    
+                    <label for="brushOpacity">Opacidad:</label>
+                    <input type="range" id="brushOpacity" min="1" max="100" value="100">
+                </div>
+                <div class="ribbon-group-title">Herramientas y Pinceles</div>
+            </div>
+
+            <!-- Grupo: Colores -->
+            <div class="ribbon-group">
+                <div class="ribbon-controls">
+                    <input type="color" id="brushColor" value="#000000" style="width: 28px; height: 28px; padding: 0; border: none; cursor:pointer;">
+                    <div class="color-palette">
+                        <div class="color-swatch" style="background:#000000" data-color="#000000"></div>
+                        <div class="color-swatch" style="background:#7f7f7f" data-color="#7f7f7f"></div>
+                        <div class="color-swatch" style="background:#880015" data-color="#880015"></div>
+                        <div class="color-swatch" style="background:#ed1c24" data-color="#ed1c24"></div>
+                        <div class="color-swatch" style="background:#ff7f27" data-color="#ff7f27"></div>
+                        <div class="color-swatch" style="background:#fff200" data-color="#fff200"></div>
+                        <div class="color-swatch" style="background:#22b14c" data-color="#22b14c"></div>
+                        <div class="color-swatch" style="background:#ffffff" data-color="#ffffff"></div>
+                        <div class="color-swatch" style="background:#c3c3c3" data-color="#c3c3c3"></div>
+                        <div class="color-swatch" style="background:#b5e61d" data-color="#b5e61d"></div>
+                        <div class="color-swatch" style="background:#00a2e8" data-color="#00a2e8"></div>
+                        <div class="color-swatch" style="background:#3f48cc" data-color="#3f48cc"></div>
+                        <div class="color-swatch" style="background:#a349a4" data-color="#a349a4"></div>
+                        <div class="color-swatch" style="background:#ffaec9" data-color="#ffaec9"></div>
+                    </div>
+                </div>
+                <div class="ribbon-group-title">Colores</div>
+            </div>
+
+        </div>
+
+        <!-- Área de Trabajo -->
+        <div class="canvas-area">
+            <canvas id="paintCanvas" width="600" height="400"></canvas>
+        </div>
+
+        <!-- Barra de Estado -->
+        <div class="win7-statusbar">
+            <span>600 x 400px</span>
+            <span>Guardado automático activado</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('paintCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const brushColorInput = document.getElementById('brushColor');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushOpacityInput = document.getElementById('brushOpacity');
+        const brushTypeSelect = document.getElementById('brushType');
+        const realisticSprayBtn = document.getElementById('realisticSprayBtn'); // Nuevo botón
+        const onionSkinCheckbox = document.getElementById('onionSkin');
+        const clearFrameBtn = document.getElementById('clearFrameBtn');
+
+        const prevFrameBtn = document.getElementById('prevFrameBtn');
+        const nextFrameBtn = document.getElementById('nextFrameBtn');
+        const frameLabel = document.getElementById('frameLabel');
+        
+        const addFrameBtn = document.getElementById('addHojaBtn');
+        const deleteFrameBtn = document.getElementById('deleteHojaBtn');
+        
+        const fpsSlider = document.getElementById('fpsSlider');
+        const playBtn = document.getElementById('playBtn');
+
+        // Estado de la Animación
+        let framesData = [[]];
+        let currentFrameIndex = 0;
+        let isDrawing = false;
+        let currentStroke = null;
+        let isPlaying = false;
+        let playTimeout = null;
+        
+        // Estado del nuevo botón
+        let isRealisticSpray = false;
+
+        loadFromLocalStorage();
+
+        // Conversor de HEX a RGB (necesario para la transparencia del spray realista)
+        function hexToRgb(hex) {
+            let r = 0, g = 0, b = 0;
+            if (hex && hex.length === 7) {
+                r = parseInt(hex.substring(1, 3), 16);
+                g = parseInt(hex.substring(3, 5), 16);
+                b = parseInt(hex.substring(5, 7), 16);
+            }
+            return {r, g, b};
+        }
+
+        // Lógica del Botón de Spray Realista
+        realisticSprayBtn.addEventListener('click', () => {
+            isRealisticSpray = !isRealisticSpray;
+            if(isRealisticSpray) {
+                realisticSprayBtn.textContent = "Spray Realista: ON";
+                realisticSprayBtn.classList.add('btn-primary');
+                brushTypeSelect.value = 'spray'; // Auto-selecciona el spray
+            } else {
+                realisticSprayBtn.textContent = "Spray Realista: OFF";
+                realisticSprayBtn.classList.remove('btn-primary');
+            }
+        });
+
+        // Selección de colores rápida
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', () => {
+                brushColorInput.value = swatch.getAttribute('data-color');
+            });
+        });
+
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function addPointsToStroke(x, y) {
+            if (currentStroke.type === 'spray') {
+                if (currentStroke.realistic) {
+                    // Para el spray realista solo guardamos la posición central
+                    currentStroke.points.push(x, y);
+                } else {
+                    // Spray clásico de 8 bits (píxeles aleatorios)
+                    for (let d = 0; d < 8; d++) {
+                        const offsetX = (Math.random() - 0.5) * currentStroke.size * 2;
+                        const offsetY = (Math.random() - 0.5) * currentStroke.size * 2;
+                        currentStroke.points.push(x + offsetX, y + offsetY);
+                    }
+                }
+            } else {
+                currentStroke.points.push(x, y);
+            }
+        }
+
+        function startStroke(e) {
+            if (isPlaying) return;
+            isDrawing = true;
+            const coords = getCoords(e);
+            currentStroke = {
+                type: brushTypeSelect.value,
+                color: brushColorInput.value,
+                size: parseInt(brushSizeInput.value),
+                opacity: parseInt(brushOpacityInput.value) / 100,
+                realistic: isRealisticSpray, // Guardamos si el trazo se hizo en modo realista
+                points: []
+            };
+            
+            addPointsToStroke(coords.x, coords.y);
+            
+            renderCurrentFrame();
+            drawSingleStroke(currentStroke);
+        }
+
+        function drawStroke(e) {
+            if (!isDrawing || isPlaying) return;
+            const coords = getCoords(e);
+            
+            addPointsToStroke(coords.x, coords.y);
+
+            renderCurrentFrame();
+            drawSingleStroke(currentStroke);
+        }
+
+        function endStroke() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (currentStroke && currentStroke.points.length > 0) {
+                framesData[currentFrameIndex].push(currentStroke);
+                saveToLocalStorage();
+            }
+            currentStroke = null;
+            renderCurrentFrame();
+        }
+
+        // Eventos de entrada
+        canvas.addEventListener('mousedown', startStroke);
+        canvas.addEventListener('mousemove', drawStroke);
+        window.addEventListener('mouseup', endStroke);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startStroke(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drawStroke(e); }, { passive: false });
+        canvas.addEventListener('touchend', endStroke);
+
+        // Renderizado del Trazo
+        function drawSingleStroke(stroke, overrideColor = null) {
+            const pts = stroke.points;
+            if (!pts || pts.length === 0) return;
+
+            ctx.save();
+            const type = stroke.type || 'round';
+            const finalColor = overrideColor ? overrideColor : (type === 'eraser' ? '#ffffff' : stroke.color);
+            const size = stroke.size;
+
+            let alpha = stroke.opacity !== undefined ? stroke.opacity : 1.0;
+            if (type === 'highlighter' && stroke.opacity === undefined) alpha = 0.35;
+            if (type === 'eraser' && !overrideColor) alpha = 1.0; 
+            
+            ctx.globalAlpha = overrideColor ? 0.2 : alpha;
+
+            ctx.strokeStyle = finalColor;
+            ctx.fillStyle = finalColor;
+            ctx.lineWidth = size;
+
+            if (type === 'highlighter') {
+                ctx.lineCap = 'square';
+                ctx.lineJoin = 'miter';
+            } else if (type === 'square') {
+                ctx.lineCap = 'square';
+                ctx.lineJoin = 'miter';
+            } else if (type === 'spray') {
+                if (stroke.realistic) {
+                    // --- AERÓGRAFO REALISTA (Gradiente Radial) ---
+                    const rgb = hexToRgb(finalColor);
+                    const radius = size * 1.5; // Radio más grande para mayor difuminado
+                    
+                    for (let i = 0; i < pts.length; i += 2) {
+                        const cx = pts[i];
+                        const cy = pts[i+1];
+                        
+                        const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+                        // Centro translúcido que se va degradando a transparente
+                        radGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.15})`);
+                        radGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                        
+                        ctx.fillStyle = radGrad;
+                        ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+                    }
+                } else {
+                    // --- AERÓGRAFO CLÁSICO (Píxeles) ---
+                    for (let i = 0; i < pts.length; i += 2) {
+                        ctx.fillRect(pts[i], pts[i+1], 1.5, 1.5);
+                    }
+                }
+                ctx.restore();
+                return;
+            } else {
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
+
+            if (pts.length >= 2) {
+                ctx.beginPath();
+                ctx.moveTo(pts[0], pts[1]);
+                for (let i = 2; i < pts.length; i += 2) {
+                    ctx.lineTo(pts[i], pts[i+1]);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function renderCurrentFrame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Papel Cebolla
+            if (onionSkinCheckbox.checked && currentFrameIndex > 0 && !isPlaying) {
+                const prevFrame = framesData[currentFrameIndex - 1] || [];
+                prevFrame.forEach(s => drawSingleStroke(s, "#d0d0d8"));
+            }
+
+            // Dibujar Frame Activo
+            const currentFrame = framesData[currentFrameIndex] || [];
+            currentFrame.forEach(s => drawSingleStroke(s));
+
+            frameLabel.textContent = `Hoja: ${currentFrameIndex + 1} / ${framesData.length}`;
+        }
+
+        // Gestión de la Línea de Tiempo
+        addFrameBtn.addEventListener('click', () => {
+            framesData.push([]);
+            currentFrameIndex = framesData.length - 1;
+            saveToLocalStorage();
+            renderCurrentFrame();
+        });
+
+        deleteFrameBtn.addEventListener('click', () => {
+            if (framesData.length <= 1) {
+                clearFrame();
+                return;
+            }
+            framesData.splice(currentFrameIndex, 1);
+            currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+            saveToLocalStorage();
+            renderCurrentFrame();
+        });
+
+        prevFrameBtn.addEventListener('click', () => {
+            if (currentFrameIndex > 0) {
+                currentFrameIndex--;
+                renderCurrentFrame();
+            }
+        });
+
+        nextFrameBtn.addEventListener('click', () => {
+            if (currentFrameIndex < framesData.length - 1) {
+                currentFrameIndex++;
+                renderCurrentFrame();
+            }
+        });
+
+        function clearFrame() {
+            framesData[currentFrameIndex] = [];
+            saveToLocalStorage();
+            renderCurrentFrame();
+        }
+        clearFrameBtn.addEventListener('click', clearFrame);
+        onionSkinCheckbox.addEventListener('change', renderCurrentFrame);
+
+        // Motor de Reproducción
+        function playbackLoop() {
+            if (!isPlaying) return;
+            currentFrameIndex = (currentFrameIndex + 1) % framesData.length;
+            renderCurrentFrame();
+            
+            const fps = parseInt(fpsSlider.value);
+            playTimeout = setTimeout(playbackLoop, 1000 / fps);
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                isPlaying = false;
+                clearTimeout(playTimeout);
+                playBtn.textContent = "Iniciar";
+                renderCurrentFrame();
+            } else {
+                isPlaying = true;
+                playBtn.textContent = "Pausa";
+                playbackLoop();
+            }
+        });
+
+        // Almacenamiento Local
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('paint_animator_win7_frames', JSON.stringify(framesData));
+            } catch (e) {
+                console.error("Error al guardar: ", e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('paint_animator_win7_frames');
+            if (saved) {
+                try {
+                    framesData = JSON.parse(saved);
+                    currentFrameIndex = 0;
+                } catch (e) {
+                    framesData = [[]];
+                }
+            } else {
+                framesData = [[]];
+            }
+        }
+
+        renderCurrentFrame();
+    </script>
+</body>
+</html>
